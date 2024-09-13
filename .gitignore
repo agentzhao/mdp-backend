@@ -11,3 +11,5 @@ test.csv
 .idea/
 __pycache__/
 /simulator/node_modules/
+
+/mdp-backend-env

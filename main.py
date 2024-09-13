@@ -17,7 +17,7 @@ app = Flask(__name__)
 CORS(app)
 
 model = YOLO(
-    "Users/irfaa/OneDrive - Nanyang Technological University/Desktop/firstModel19/weights/best.pt"
+    "./best.pt"
 )
 
 
@@ -138,7 +138,9 @@ def predict():
 
     try:
         # Read the file as an image
-        img = Image.open(file.stream)
+        img_src = Image.open(file.stream)
+        
+        img = cv2.imread(img_src)
 
         # Convert the image to a NumPy array
         img = np.array(img)
@@ -169,7 +171,7 @@ def predict():
                 }
             )
 
-        return jsonify(predictions)
+        return jsonify({"result": predictions})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
