@@ -84,11 +84,13 @@ def path_finding():
     start = time.time()
     # Get shortest path
     optimal_path, distance = maze_solver.get_optimal_order_dp(retrying=retrying)
-    print(f"Time taken to find shortest path using A* search: {time.time() - start}s")
-    print(f"Distance to travel: {distance} units")
-
     # Based on the shortest path, generate commands for the robot
     commands = command_generator(optimal_path, obstacles)
+
+    print(f"Time taken to find shortest path using A* search: {time.time() - start}s")
+    print(f"Distance to travel: {distance} units")
+    print(f"Path: {optimal_path}")
+    print(f"Commands: {commands}")
 
     # Get the starting location and add it to path_results
     path_results = [optimal_path[0].get_dict()]

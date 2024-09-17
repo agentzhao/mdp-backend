@@ -14,6 +14,13 @@ from consts import (
 )
 from python_tsp.exact import solve_tsp_dynamic_programming
 
+
+# change this to account for the 3-1 turn and 4-2 turn
+turn_wrt_big_turns = [
+    [TURN_RADIUS, TURN_RADIUS],
+    [TURN_RADIUS, TURN_RADIUS],
+]
+
 turn_wrt_big_turns = [
     [3 * TURN_RADIUS, TURN_RADIUS],
     [4 * TURN_RADIUS, 2 * TURN_RADIUS],
@@ -114,7 +121,7 @@ class MazeSolver:
         s.sort(key=lambda x: x.count("1"), reverse=True)
         return s
 
-    def get_optimal_order_dp(self, retrying) -> List[CellState]:
+    def get_optimal_order_dp(self, retrying):
         distance = 1e9
         optimal_path = []
 
