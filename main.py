@@ -6,10 +6,19 @@ from model import *
 from helper import command_generator
 from consts import Direction
 
+import cv2
+import numpy as np
+from flask import Flask, request, jsonify
+from ultralytics import YOLO
+from PIL import Image
+
+
 app = Flask(__name__)
 CORS(app)
-# model = load_model()
-model = None
+
+model = YOLO(
+    "./best.pt"
+)
 
 
 @app.route("/")
@@ -116,32 +125,61 @@ def path_finding():
     )
 
 
-@app.route("/image", methods=["POST"])
-def image_predict():
+@app.route("/predict", methods=["POST"])
+def predict():
     """
     This is the main endpoint for the image prediction algorithm
     :return: a json object with a key "result" and value a dictionary with keys "obstacle_id" and "image_id"
     """
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
     file = request.files["file"]
-    filename = file.filename
-    file.save(os.path.join("uploads", filename))
-    # filename format: "<timestamp>_<obstacle_id>_<signal>.jpeg"
-    constituents = file.filename.split("_")
-    obstacle_id = constituents[1]
+    if file.filename == "":
+        return jsonify({"error": "No file selected"}), 400
 
-    ## Week 8 ##
-    # signal = constituents[2].strip(".jpg")
-    # image_id = predict_image(filename, model, signal)
+    try:
+        # Read the file as an image
+        img_src = Image.open(file.stream)
+        
+        img = cv2.imread(img_src)
 
-    ## Week 9 ##
-    # We don't need to pass in the signal anymore
-    image_id = predict_image_week_9(filename, model)
+        # Convert the image to a NumPy array
+        img = np.array(img)
 
-    # Return the obstacle_id and image_id
-    result = {"obstacle_id": obstacle_id, "image_id": image_id}
-    return jsonify(result)
+        # Convert RGB to BGR format (YOLO expects BGR)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        # Run YOLOv8 inference
+        results = model(img)  # This returns a list of Results objects
+        result = results[0]  # Access the first Results object
+
+        # Extract bounding boxes and labels from the results
+        boxes = result.boxes  # Bounding boxes
+        names = result.names  # Class names
+
+        # Prepare predictions in a list of dictionaries
+        predictions = []
+        for box in boxes:
+            predictions.append(
+                {
+                    "x1": box.xyxy[0][0].item(),
+                    "y1": box.xyxy[0][1].item(),
+                    "x2": box.xyxy[0][2].item(),
+                    "y2": box.xyxy[0][3].item(),
+                    "confidence": box.conf[0].item(),
+                    "class_id": box.cls[0].item(),
+                    "class_name": names[int(box.cls[0].item())],
+                }
+            )
+
+        return jsonify({"result": predictions})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
+# idk what is this for
 @app.route("/stitch", methods=["GET"])
 def stitch():
     """
