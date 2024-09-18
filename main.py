@@ -16,9 +16,7 @@ from PIL import Image
 app = Flask(__name__)
 CORS(app)
 
-model = YOLO(
-    "./best.pt"
-)
+model = YOLO("./best.pt")
 
 
 @app.route("/")
@@ -38,7 +36,7 @@ def index():
         <ul>
             <li><a href="/status">Status</a></li>
             <li><a href="/path">Path Finding (POST Request)</a></li>
-            <li><a href="/image">Image Predict (POST Request)</a></li>
+            <li><a href="/predict">Image Predict (POST Request)</a></li>
             <li><a href="/stitch">Stitch Images</a></li>
         </ul>
     </body>
@@ -141,7 +139,7 @@ def predict():
     try:
         # Read the file as an image
         img_src = Image.open(file.stream)
-        
+
         img = cv2.imread(img_src)
 
         # Convert the image to a NumPy array
