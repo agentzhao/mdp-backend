@@ -4,11 +4,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from helper import command_generator
 from consts import Direction
-import numpy as np
 from flask import Flask, request, jsonify
 from PIL import Image
-
-# from model import *
+from model import *
 
 
 app = Flask(__name__)
