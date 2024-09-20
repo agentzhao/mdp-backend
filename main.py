@@ -1,4 +1,5 @@
 import time
+import re
 from algo.algo import MazeSolver
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -12,6 +13,39 @@ from model import *
 app = Flask(__name__)
 CORS(app)
 # model = YOLO("./best.pt")
+
+
+def updateCommands(commands):
+    # Combine FW and BW commands if consecutive
+    combined_commands = []
+    i = 0
+    while i < len(commands):
+        if commands[i].startswith("FW") or commands[i].startswith("BW"):
+            # Start adding up consecutive FW or BW values
+            cmd_type = commands[i][:2]  # Either "FW" or "BW"
+            cmd_sum = int(re.findall(r"\d+", commands[i])[0])
+            while i + 1 < len(commands) and commands[i + 1].startswith(cmd_type):
+                cmd_sum += int(re.findall(r"\d+", commands[i + 1])[0])
+                i += 1
+            combined_commands.append(f"{cmd_type}{cmd_sum:03d}")
+        else:
+            combined_commands.append(commands[i])
+        i += 1
+
+    ## change the FR BR turning commands to 090
+    updated_commands = []
+
+    for command in combined_commands:
+
+        if command in ["FR00", "FL00", "BR00", "BL00"]:
+
+            updated_commands.append(command[:2] + "090")
+
+        else:
+
+            updated_commands.append(command)
+
+    return updated_commands
 
 
 @app.route("/")
@@ -88,6 +122,7 @@ def path_finding():
     optimal_path, distance = maze_solver.get_optimal_order_dp(retrying=retrying)
     # Based on the shortest path, generate commands for the robot
     commands = command_generator(optimal_path, obstacles)
+    commands = updateCommands(commands)
 
     print(f"Time taken to find shortest path using A* search: {time.time() - start}s")
     print(f"Distance to travel: {distance} units")
