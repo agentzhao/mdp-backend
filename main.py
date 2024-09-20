@@ -214,7 +214,7 @@ def predict_image_week_9(filename, model):
         "A": 9,
         "B": 10,
         "C": 12,
-        "D": 14,
+        "D": 13,
         "E": 16,
         "F": 17,
         "G": 18,
@@ -231,7 +231,7 @@ def predict_image_week_9(filename, model):
         "Down": 15,
         "Right": 21,
         "Left": 20,
-        "Dot": 13,
+        "Dot": 14,
     }
 
     # Create a reverse mapping
