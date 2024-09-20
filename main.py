@@ -107,6 +107,7 @@ def path_finding():
     i = 0
     for command in commands:
         if command.startswith("SNAP"):
+            # rpi take picture
             continue
         if command.startswith("FIN"):
             continue
