@@ -34,15 +34,10 @@ def updateCommands(commands):
 
     ## change the FR BR turning commands to 090
     updated_commands = []
-
     for command in combined_commands:
-
         if command in ["FR00", "FL00", "BR00", "BL00"]:
-
             updated_commands.append(command[:2] + "090")
-
         else:
-
             updated_commands.append(command)
 
     return updated_commands
@@ -97,11 +92,41 @@ def path_finding():
     assert content
 
     # Get the obstacles, big_turn, retrying, robot_x, robot_y, and robot_direction from the json data
-    obstacles = content["obstacles"]
+    try:
+        # Extract and validate obstacles
+        obstacles = content["obstacles"]
+        if not isinstance(obstacles, list):
+            raise ValueError("Obstacles should be a list of objects")
+
+        for obstacle in obstacles:
+            # Ensure each obstacle has the expected keys
+            if not all(key in obstacle for key in ("x", "y", "d", "id")):
+                raise ValueError(
+                    "Each obstacle must have 'x', 'y', 'd', and 'id' properties"
+                )
+
+        # Extract and validate retrying
+        retrying = content["retrying"]
+        if not isinstance(retrying, bool):
+            raise ValueError("'retrying' should be a boolean")
+
+        # Extract and validate robot_x and robot_y
+        robot_x = content["robot_x"]
+        robot_y = content["robot_y"]
+        if not (isinstance(robot_x, int) and isinstance(robot_y, int)):
+            raise ValueError("'robot_x' and 'robot_y' should be numbers")
+
+        # Extract and validate robot_direction
+        robot_direction = int(content["robot_dir"])
+        if not isinstance(robot_direction, int):
+            raise ValueError("'robot_dir' should be an integer")
+
+    except KeyError as e:
+        return jsonify({"error": f"Missing key: {str(e)}"}), 400
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     # big_turn = int(content['big_turn'])
-    retrying = content["retrying"]
-    robot_x, robot_y = content["robot_x"], content["robot_y"]
-    robot_direction = int(content["robot_dir"])
 
     # Initialize MazeSolver object with robot size of 20x20, bottom left corner of robot at (1,1), facing north, and whether to use a big turn or not.
     maze_solver = MazeSolver(
