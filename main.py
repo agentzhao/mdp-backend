@@ -6,13 +6,69 @@ from flask_cors import CORS
 from helper import command_generator
 from consts import Direction
 from flask import Flask, request, jsonify
-from PIL import Image
-from model import *
 
+import requests
+import io
+from picamera import PiCamera
+import serial
 
 app = Flask(__name__)
 CORS(app)
-# model = YOLO("./best.pt")
+
+# STM32 Serial Configuration
+STM_SERIAL_PORT = "/dev/ttyUSB0"
+STM_BAUD_RATE = 115200
+ser = serial.Serial(STM_SERIAL_PORT, STM_BAUD_RATE, timeout=1)
+
+# Inference Server URL
+INFERENCE_SERVER_URL = "http://192.168.51.77:5002/image"
+image_counter = 0  # Global counter for image naming
+
+
+def send_command_to_stm(command: str):
+    """Send a command to the STM32 via serial and wait for response."""
+    ser.write(f"{command}\n".encode("ascii"))
+    print(f"Sent: {command}")
+    time.sleep(7)  # Wait for STM32 to process the command
+    if ser.in_waiting > 0:
+        response = ser.readline().decode("utf-8").strip()
+        print(f"Received: {response}")
+    else:
+        print("No response received from STM32")
+
+
+def capture_and_send_image():
+    """Capture an image and send it to the inference server."""
+    global image_counter
+    camera = PiCamera()
+    camera.resolution = (1920, 1080)
+    time.sleep(2)  # Camera warm-up time
+
+    stream = io.BytesIO()
+    camera.capture(stream, format="jpeg")
+    stream.seek(0)
+
+    image_counter += 1
+    filename = f"image_{image_counter}.jpg"
+
+    result = send_image_to_server(stream, filename)
+    camera.close()
+    return result
+
+
+def send_image_to_server(image_stream, filename):
+    """Send the captured image to the inference server."""
+    files = {"file": (filename, image_stream, "image/jpeg")}
+    try:
+        response = requests.post(INFERENCE_SERVER_URL, files=files)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error: Server responded with status code {response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending request to server: {e}")
+        return None
 
 
 def updateCommands(commands):
@@ -161,6 +217,8 @@ def path_finding():
     for command in commands:
         if command.startswith("SNAP"):
             # rpi take picture
+            result = capture_and_send_image()
+            print("Image captured and sent for processing")
             continue
         if command.startswith("FIN"):
             continue
@@ -169,6 +227,7 @@ def path_finding():
         elif command.startswith("BW") or command.startswith("BS"):
             i += int(command[2:]) // 10
         else:
+            send_command_to_stm(command)
             i += 1
         path_results.append(optimal_path[i].get_dict())
     return jsonify(
