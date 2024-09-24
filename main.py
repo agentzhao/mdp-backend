@@ -117,7 +117,6 @@ def index():
             <li><a href="/status">Status</a></li>
             <li><a href="/path">Path Finding (POST Request)</a></li>
             <li><a href="/image">Image Predict (POST Request)</a></li>
-            <li><a href="/stitch">Stitch Images</a></li>
         </ul>
     </body>
     </html>
@@ -238,16 +237,18 @@ def path_finding():
     )
 
 
-# idk what is this for
-@app.route("/stitch", methods=["GET"])
-def stitch():
-    """
-    This is the main endpoint for the stitching command. Stitches the images using two different functions, in effect creating two stitches, just for redundancy purposes
-    """
-    img = stitch_image()
-    img.show()
-    img2 = stitch_image_own()
-    img2.show()
+@app.route("/test", methods=["GET"])
+def test():
+    commands = ["FW010", "FR090", "FW010", "FR090", "FW010", "FR090", "FW010", "FR090"]
+    for command in commands:
+        if command.startswith("SNAP"):
+            # rpi take picture
+            result = capture_and_send_image()
+            print("Image captured and sent for processing")
+            continue
+        if command.startswith("FIN"):
+            continue
+        send_command_to_stm(command)
     return jsonify({"result": "ok"})
 
 
