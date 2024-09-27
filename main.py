@@ -139,7 +139,7 @@ def path_finding():
     :return: a json object with a key "data" and value a dictionary with keys "distance", "path", and "commands"
 
     Example JSON Request with 2 obstacles:
-    {"obstacles":[{"x":6,"y":8,"d":0,"id":9},{"x":16,"y":18,"d":6,"id":8}],"robot_x":1,"robot_y":1,"robot_dir":0,"retrying":false}
+    {"obstacles":[{"x":6,"y":8,"d":0,"id":9},{"x":16,"y":18,"d":6,"id":8}],"robot_x":1,"robot_y":1,"robot_dir":0}
     """
     # Get the json data from the request
     content = request.json
@@ -161,20 +161,20 @@ def path_finding():
                 )
 
         # Extract and validate retrying
-        retrying = content["retrying"]
-        if not isinstance(retrying, bool):
-            raise ValueError("'retrying' should be a boolean")
-
-        # Extract and validate robot_x and robot_y
-        robot_x = content["robot_x"]
-        robot_y = content["robot_y"]
-        if not (isinstance(robot_x, int) and isinstance(robot_y, int)):
-            raise ValueError("'robot_x' and 'robot_y' should be numbers")
-
-        # Extract and validate robot_direction
-        robot_direction = int(content["robot_dir"])
-        if not isinstance(robot_direction, int):
-            raise ValueError("'robot_dir' should be an integer")
+        # retrying = content["retrying"]
+        # if not isinstance(retrying, bool):
+        #     raise ValueError("'retrying' should be a boolean")
+        #
+        # # Extract and validate robot_x and robot_y
+        # robot_x = content["robot_x"]
+        # robot_y = content["robot_y"]
+        # if not (isinstance(robot_x, int) and isinstance(robot_y, int)):
+        #     raise ValueError("'robot_x' and 'robot_y' should be numbers")
+        #
+        # # Extract and validate robot_direction
+        # robot_direction = int(content["robot_dir"])
+        # if not isinstance(robot_direction, int):
+        #     raise ValueError("'robot_dir' should be an integer")
 
     except KeyError as e:
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
@@ -183,6 +183,10 @@ def path_finding():
         return jsonify({"error": str(e)}), 400
     # big_turn = int(content['big_turn'])
 
+    robot_x = 1
+    robot_y = 1
+    robot_direction = 0
+    retrying = False
     # Initialize MazeSolver object with robot size of 20x20, bottom left corner of robot at (1,1), facing north, and whether to use a big turn or not.
     maze_solver = MazeSolver(
         size_x=20,
