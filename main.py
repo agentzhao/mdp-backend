@@ -60,7 +60,7 @@ def path_finding():
     :return: a json object with a key "data" and value a dictionary with keys "distance", "path", and "commands"
 
     Example JSON Request with 2 obstacles:
-    {"obstacles":[{"x":6,"y":8,"d":0,"id":9},{"x":16,"y":18,"d":6,"id":8}],"robot_x":1,"robot_y":1,"robot_dir":0}
+    {"obstacles":[{"x":6,"y":8,"d":0,"id":9},{"x":16,"y":18,"d":6,"id":8}],"robot_x":1,"robot_y":1,"robot_dir":0,"retrying":False}
     """
     # Get the json data from the request
     content = request.json
@@ -82,20 +82,20 @@ def path_finding():
                 )
 
         # Extract and validate retrying
-        # retrying = content["retrying"]
-        # if not isinstance(retrying, bool):
-        #     raise ValueError("'retrying' should be a boolean")
-        #
-        # # Extract and validate robot_x and robot_y
-        # robot_x = content["robot_x"]
-        # robot_y = content["robot_y"]
-        # if not (isinstance(robot_x, int) and isinstance(robot_y, int)):
-        #     raise ValueError("'robot_x' and 'robot_y' should be numbers")
-        #
-        # # Extract and validate robot_direction
-        # robot_direction = int(content["robot_dir"])
-        # if not isinstance(robot_direction, int):
-        #     raise ValueError("'robot_dir' should be an integer")
+        retrying = content["retrying"]
+        if not isinstance(retrying, bool):
+            raise ValueError("'retrying' should be a boolean")
+
+        # Extract and validate robot_x and robot_y
+        robot_x = content["robot_x"]
+        robot_y = content["robot_y"]
+        if not (isinstance(robot_x, int) and isinstance(robot_y, int)):
+            raise ValueError("'robot_x' and 'robot_y' should be numbers")
+
+        # Extract and validate robot_direction
+        robot_direction = int(content["robot_dir"])
+        if not isinstance(robot_direction, int):
+            raise ValueError("'robot_dir' should be an integer")
 
     except KeyError as e:
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
@@ -105,10 +105,11 @@ def path_finding():
     # big_turn = int(content['big_turn'])
 
     # hardcoded values
-    robot_x = 1
-    robot_y = 1
-    robot_direction = 0
-    retrying = False
+    # robot_x = 1
+    # robot_y = 1
+    # robot_direction = 0
+    # retrying = False
+    big_turn = 0
     # Initialize MazeSolver object with robot size of 20x20, bottom left corner of robot at (1,1), facing north, and whether to use a big turn or not.
     maze_solver = MazeSolver(
         size_x=20,
@@ -116,7 +117,7 @@ def path_finding():
         robot_x=robot_x,
         robot_y=robot_y,
         robot_direction=Direction(robot_direction),
-        big_turn=0,
+        big_turn=big_turn,
     )
 
     # Add each obstacle into the MazeSolver. Each obstacle is defined by its x,y positions, its direction, and its id
@@ -128,7 +129,7 @@ def path_finding():
     optimal_path, distance = maze_solver.get_optimal_order_dp(retrying=retrying)
     # Based on the shortest path, generate commands for the robot
     commands = command_generator(optimal_path, obstacles)
-    commands = updateCommands(commands)
+    updated_commands = updateCommands(commands)
 
     print(f"Time taken to find shortest path using A* search: {time.time() - start}s")
     print(f"Distance to travel: {distance} units")
@@ -142,7 +143,6 @@ def path_finding():
     for command in commands:
         if command.startswith("SNAP"):
             # rpi take picture
-            print("Image captured and sent for processing")
             continue
         if command.startswith("FIN"):
             continue
@@ -151,12 +151,15 @@ def path_finding():
         elif command.startswith("BW") or command.startswith("BS"):
             i += int(command[2:]) // 10
         else:
-            ##send_command_to_stm(command)
             i += 1
         path_results.append(optimal_path[i].get_dict())
     return jsonify(
         {
-            "data": {"distance": distance, "path": path_results, "commands": commands},
+            "data": {
+                "distance": distance,
+                "path": path_results,
+                "commands": updated_commands,
+            },
             "error": None,
         }
     )
@@ -224,17 +227,29 @@ def image_predict():
 ### Helper functions
 def updateCommands(commands):
     # Combine FW and BW commands if consecutive
+    # combined_commands = []
+    # i = 0
+    # while i < len(commands):
+    #     if commands[i].startswith("FW") or commands[i].startswith("BW"):
+    #         # Start adding up consecutive FW or BW values
+    #         cmd_type = commands[i][:2]  # Either "FW" or "BW"
+    #         cmd_sum = int(re.findall(r"\d+", commands[i])[0])
+    #         while i + 1 < len(commands) and commands[i + 1].startswith(cmd_type):
+    #             cmd_sum += int(re.findall(r"\d+", commands[i + 1])[0])
+    #             i += 1
+    #         combined_commands.append(f"{cmd_type}{cmd_sum:03d}")
+    #     else:
+    #         combined_commands.append(commands[i])
+    #     i += 1
+
     combined_commands = []
     i = 0
     while i < len(commands):
         if commands[i].startswith("FW") or commands[i].startswith("BW"):
-            # Start adding up consecutive FW or BW values
-            cmd_type = commands[i][:2]  # Either "FW" or "BW"
-            cmd_sum = int(re.findall(r"\d+", commands[i])[0])
-            while i + 1 < len(commands) and commands[i + 1].startswith(cmd_type):
-                cmd_sum += int(re.findall(r"\d+", commands[i + 1])[0])
-                i += 1
-            combined_commands.append(f"{cmd_type}{cmd_sum:03d}")
+            # Extract the number and pad it with zeros to ensure it has 3 digits
+            cmd_type = commands[i][:2]
+            cmd_value = int(re.findall(r"\d+", commands[i])[0])
+            combined_commands.append(f"{cmd_type}{cmd_value:03d}")
         else:
             combined_commands.append(commands[i])
         i += 1
