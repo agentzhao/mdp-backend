@@ -227,22 +227,21 @@ def image_predict():
 ### Helper functions
 def updateCommands(commands):
     # Combine FW and BW commands if consecutive
-    # combined_commands = []
-    # i = 0
-    # while i < len(commands):
-    #     if commands[i].startswith("FW") or commands[i].startswith("BW"):
-    #         # Start adding up consecutive FW or BW values
-    #         cmd_type = commands[i][:2]  # Either "FW" or "BW"
-    #         cmd_sum = int(re.findall(r"\d+", commands[i])[0])
-    #         while i + 1 < len(commands) and commands[i + 1].startswith(cmd_type):
-    #             cmd_sum += int(re.findall(r"\d+", commands[i + 1])[0])
-    #             i += 1
-    #         combined_commands.append(f"{cmd_type}{cmd_sum:03d}")
-    #     else:
-    #         combined_commands.append(commands[i])
-    #     i += 1
-
     combined_commands = []
+    i = 0
+    while i < len(commands):
+        if commands[i].startswith("FW") or commands[i].startswith("BW"):
+            # Start adding up consecutive FW or BW values
+            cmd_type = commands[i][:2]  # Either "FW" or "BW"
+            cmd_sum = int(re.findall(r"\d+", commands[i])[0])
+            while i + 1 < len(commands) and commands[i + 1].startswith(cmd_type):
+                cmd_sum += int(re.findall(r"\d+", commands[i + 1])[0])
+                i += 1
+            combined_commands.append(f"{cmd_type}{cmd_sum:03d}")
+        else:
+            combined_commands.append(commands[i])
+        i += 1
+
     i = 0
     while i < len(commands):
         if commands[i].startswith("FW") or commands[i].startswith("BW"):
