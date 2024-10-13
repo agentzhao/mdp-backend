@@ -17,13 +17,8 @@ from python_tsp.exact import solve_tsp_dynamic_programming
 
 # change this to account for the 3-1 turn and 4-2 turn
 turn_wrt_big_turns = [
-    [TURN_RADIUS, TURN_RADIUS],
-    [TURN_RADIUS, TURN_RADIUS],
-]
-
-turn_wrt_big_turns = [
-    [3 * TURN_RADIUS, TURN_RADIUS],
-    [4 * TURN_RADIUS, 2 * TURN_RADIUS],
+    [3 * TURN_RADIUS, 3 * TURN_RADIUS],
+    [3 * TURN_RADIUS, 3 * TURN_RADIUS],
 ]
 
 
