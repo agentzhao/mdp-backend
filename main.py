@@ -258,7 +258,7 @@ def image_predict():
             return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
 
         result = {
-            # "obstacle_id": obstacle_id,
+            "obstacle_id": obstacle_id,
             "image_id":image_id
         }
         logging.debug(f"Returning result: {result}")
