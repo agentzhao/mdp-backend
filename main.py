@@ -243,7 +243,7 @@ def image_predict():
         obstacle_id = constituents[1].strip(".jpg")
 
         try:
-            image_id, annotated_image = predict_image(filename, model)           
+            image_id, annotated_image, conf = predict_image(filename, model)           
             logging.debug(f"Prediction successful. Image ID: {image_id}. Obstacle ID: {obstacle_id}")
             
             # Save the annotated image
@@ -259,7 +259,8 @@ def image_predict():
 
         result = {
             "obstacle_id": obstacle_id,
-            "image_id":image_id
+            "image_id":image_id,
+            "confidence": conf
         }
         logging.debug(f"Returning result: {result}")
         
@@ -331,7 +332,7 @@ def predict_image(filename, model):
         "Down": 37,
         "Right": 38,
         "Left": 39,
-        "Dot": 40,
+        "Stop": 40,
     }
     
     # Prepare predictions in a list of dictionaries 
@@ -400,7 +401,7 @@ def predict_image(filename, model):
     label = f"{image_name}: {conf:.2f}" 
     cv2.putText(img, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
-    return image_id, img.copy()
+    return image_id, img.copy(), conf
 
 def stitch_image():
     """
