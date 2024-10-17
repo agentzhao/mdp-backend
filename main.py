@@ -13,7 +13,7 @@ import logging
 from PIL import Image
 import glob
 import shutil
-
+import math
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -469,39 +469,50 @@ def predict_image(filename, model):
 
 def stitch_image():
     """
-    Stitches the images in the folder together and saves it into runs/stitched folder
+    Stitches the images in the folder together in a grid layout and saves it into the predictions folder
     """
     # Initialize path to save stitched image
     imgFolder = 'predictions'
     stitchedPath = os.path.join(imgFolder, f'stitched-{int(time.time())}.jpeg')
 
-    # Find all files that ends with ".jpg" (this won't match the stitched images as we name them ".jpeg")
-    # imgPaths = glob.glob(os.path.join(imgFolder+"/detect/*/", "*.jpg"))
+    # Find all files that end with ".jpg"
     imgPaths = glob.glob(os.path.join(imgFolder, "*.jpg"))
+    
     # Open all images
     images = [Image.open(x) for x in imgPaths]
-    # Get the width and height of each image
-    width, height = zip(*(i.size for i in images))
-    # Calculate the total width and max height of the stitched image, as we are stitching horizontally
-    total_width = sum(width)
-    max_height = max(height)
-    stitchedImg = Image.new('RGB', (total_width, max_height))
-    x_offset = 0
-
-    # Stitch the images together
-    for im in images:
-        stitchedImg.paste(im, (x_offset, 0))
-        x_offset += im.size[0]
-    # Save the stitched image to the path
+    
+    # Calculate the grid size
+    num_images = len(images)
+    grid_size = math.ceil(math.sqrt(num_images))
+    
+    # Get the max width and height of the images
+    max_width = max(img.size[0] for img in images)
+    max_height = max(img.size[1] for img in images)
+    
+    # Calculate the size of the stitched image
+    stitched_width = max_width * grid_size
+    stitched_height = max_height * grid_size
+    
+    # Create a new blank image
+    stitchedImg = Image.new('RGB', (stitched_width, stitched_height), (255, 255, 255))
+    
+    # Paste the images into the grid
+    for index, img in enumerate(images):
+        row = index // grid_size
+        col = index % grid_size
+        x_offset = col * max_width
+        y_offset = row * max_height
+        stitchedImg.paste(img, (x_offset, y_offset))
+    
+    # Save the stitched image
     stitchedImg.save(stitchedPath)
 
     # Move original images to "originals" subdirectory
-    original_dir = os.path.join(os.path.dirname(__file__), 'predictions/originals')
+    original_dir = os.path.join(os.path.dirname(__file__), 'predictions', 'originals')
     if not os.path.exists(original_dir):
         os.makedirs(original_dir)
     for img in imgPaths:
-        shutil.move(img, os.path.join(
-            "predictions", "originals", os.path.basename(img)))
+        shutil.move(img, os.path.join(original_dir, os.path.basename(img)))
 
     return stitchedImg
 
