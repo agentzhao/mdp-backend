@@ -270,6 +270,74 @@ def image_predict():
     logging.error("Unknown error occurred")
     return jsonify({"error": "Unknown error occurred"}), 500
 
+def draw_own_bbox(img,x1,y1,x2,y2,image_id,conf,color=(36,255,12),text_color=(0,0,0)):
+    id_to_name = {
+        "NA": 'NA',
+        10: "Bullseye",
+        11: "One",
+        12: "Two",
+        13: "Three",
+        14: "Four",
+        15: "Five",
+        16: "Six",
+        17: "Seven",
+        18: "Eight",
+        19: "Nine",
+        20: "A",
+        21: "B",
+        22: "C",
+        23: "D",
+        24: "E",
+        25: "F",
+        26: "G",
+        27: "H",
+        28: "S",
+        29: "T",
+        30: "U",
+        31: "V",
+        32: "W",
+        33: "X",
+        34: "Y",
+        35: "Z",
+        36: "Up Arrow",
+        37: "Down Arrow",
+        38: "Right Arrow",
+        39: "Left Arrow",
+        40: "Stop"
+    }
+    # Create Label based on requirements
+    label_lines = [
+        id_to_name[image_id],
+        f"Image ID = {image_id}",
+        f"Confidence = {conf}"
+    ]
+    
+    # Convert the coordinates to int
+    x1, x2, y1, y2 = map(int, (x1, x2, y1, y2))
+
+    # Draw the bounding box
+    img = cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+    
+    # Calculate the total height required for the label
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.6
+    line_thickness = 1
+    line_height = 25  # Adjust this value to change the spacing between lines
+    
+    total_height = line_height * len(label_lines)
+    
+    # Draw background rectangle for text
+    max_width = max(cv2.getTextSize(line, font, font_scale, line_thickness)[0][0] for line in label_lines)
+    img = cv2.rectangle(img, (x1, y1 - total_height - 5), (x1 + max_width, y1), color, -1)
+    
+    # Print each line of text
+    for i, line in enumerate(label_lines):
+        y_pos = y1 - total_height + i * line_height + 15
+        img = cv2.putText(img, line, (x1, y_pos), font, font_scale, text_color, line_thickness)
+        
+    # Send the image back
+    return img.copy()
+
 @app.route('/stitch', methods=['GET'])
 def stitch():
     """
@@ -395,13 +463,9 @@ def predict_image(filename, model):
     image_name = predictions[0]["class_name"]
     
     # Draw bounding box
-    cv2.rectangle(img, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-    
-    # Add label
-    label = f"{image_name}: {conf:.2f}" 
-    cv2.putText(img, label, (bbox[0], bbox[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    labeled_img = draw_own_bbox(img, bbox[0], bbox[1], bbox[2], bbox[3], image_id, conf, (36,255,12), (0,0,0))
         
-    return image_id, img.copy(), conf
+    return image_id, labeled_img.copy(), conf
 
 def stitch_image():
     """
