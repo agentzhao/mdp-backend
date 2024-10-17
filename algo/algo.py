@@ -237,12 +237,12 @@ class MazeSolver:
         """
         for ob in self.grid.obstacles:
             # 3 units
-            if abs(ob.x - x) <= 3 and abs(ob.y - y) <= 3:
-                return SAFE_COST
+            # if abs(ob.x - x) <= 3 and abs(ob.y - y) <= 3:
+            #     return SAFE_COST
 
             # 2 units
-            # if abs(ob.x - x) <= 2 and abs(ob.y - y) <= 2:
-            #     return SAFE_COST
+            if abs(ob.x - x) <= 2 and abs(ob.y - y) <= 2:
+                return SAFE_COST
 
         return 0
 
