@@ -14,6 +14,7 @@ from PIL import Image
 import glob
 import shutil
 import math
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -168,8 +169,6 @@ def path_finding():
     )
 
 
-
-
 ### Helper functions
 def updateCommands(commands):
     # Combine FW and BW commands if consecutive
@@ -210,44 +209,46 @@ def updateCommands(commands):
     return updated_commands
 
 
-@app.route('/image', methods=['POST'])
+@app.route("/image", methods=["POST"])
 def image_predict():
     logging.debug("Received image prediction request")
-    if 'file' not in request.files:
+    if "file" not in request.files:
         logging.error("No file part in the request")
         return jsonify({"error": "No file part in the request"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
+    file = request.files["file"]
+    if file.filename == "":
         logging.error("No file selected")
         return jsonify({"error": "No file selected"}), 400
 
     if file:
         filename = file.filename
         logging.debug(f"Received file: {filename}")
-        
-        upload_dir = os.path.join(os.path.dirname(__file__), 'uploads')
+
+        upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)
         file_path = os.path.join(upload_dir, filename)
-        
+
         try:
             file.save(file_path)
             logging.debug(f"File saved successfully: {file_path}")
         except Exception as e:
             logging.error(f"Failed to save file: {str(e)}")
             return jsonify({"error": f"Failed to save file: {str(e)}"}), 500
-        
+
         # filename format: "<timestamp>_<obstacle_id>.jpeg"
         constituents = file.filename.split("_")
         obstacle_id = constituents[1].strip(".jpg")
 
         try:
-            image_id, annotated_image, conf = predict_image(filename, model)           
-            logging.debug(f"Prediction successful. Image ID: {image_id}. Obstacle ID: {obstacle_id}")
-            
+            image_id, annotated_image, conf = predict_image(filename, model)
+            logging.debug(
+                f"Prediction successful. Image ID: {image_id}. Obstacle ID: {obstacle_id}"
+            )
+
             # Save the annotated image
-            prediction_dir = os.path.join(os.path.dirname(__file__), 'predictions')
+            prediction_dir = os.path.join(os.path.dirname(__file__), "predictions")
             if not os.path.exists(prediction_dir):
                 os.makedirs(prediction_dir)
             annotated_file_path = os.path.join(prediction_dir, f"annotated_{filename}")
@@ -257,22 +258,20 @@ def image_predict():
             logging.error(f"Error in image_predict: {str(e)}")
             return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
 
-        result = {
-            "obstacle_id": obstacle_id,
-            "image_id":image_id,
-            "confidence": conf
-        }
+        result = {"obstacle_id": obstacle_id, "image_id": image_id, "confidence": conf}
         logging.debug(f"Returning result: {result}")
-        
-        
+
         return jsonify(result)
 
     logging.error("Unknown error occurred")
     return jsonify({"error": "Unknown error occurred"}), 500
 
-def draw_own_bbox(img,x1,y1,x2,y2,image_id,conf,color=(36,255,12),text_color=(0,0,0)):
+
+def draw_own_bbox(
+    img, x1, y1, x2, y2, image_id, conf, color=(36, 255, 12), text_color=(0, 0, 0)
+):
     id_to_name = {
-        "NA": 'NA',
+        "NA": "NA",
         10: "Bullseye",
         11: "One",
         12: "Two",
@@ -303,45 +302,53 @@ def draw_own_bbox(img,x1,y1,x2,y2,image_id,conf,color=(36,255,12),text_color=(0,
         37: "Down Arrow",
         38: "Right Arrow",
         39: "Left Arrow",
-        40: "Stop"
+        40: "Stop",
     }
     # Create Label based on requirements
     label_lines = [
         id_to_name[image_id],
         f"Image ID = {image_id}",
-        f"Confidence = {conf}"
+        f"Confidence = {conf}",
     ]
-    
+
     # Convert the coordinates to int
     x1, x2, y1, y2 = map(int, (x1, x2, y1, y2))
 
     # Draw the bounding box
     img = cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-    
+
     # Calculate the total height required for the label
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.6
     line_thickness = 1
     line_height = 25  # Adjust this value to change the spacing between lines
-    
+
     total_height = line_height * len(label_lines)
-    
+
     # Draw background rectangle for text
-    max_width = max(cv2.getTextSize(line, font, font_scale, line_thickness)[0][0] for line in label_lines)
-    img = cv2.rectangle(img, (x1, y1 - total_height - 5), (x1 + max_width, y1), color, -1)
-    
+    max_width = max(
+        cv2.getTextSize(line, font, font_scale, line_thickness)[0][0]
+        for line in label_lines
+    )
+    img = cv2.rectangle(
+        img, (x1, y1 - total_height - 5), (x1 + max_width, y1), color, -1
+    )
+
     # Print each line of text
     for i, line in enumerate(label_lines):
         y_pos = y1 - total_height + i * line_height + 15
-        img = cv2.putText(img, line, (x1, y_pos), font, font_scale, text_color, line_thickness)
-        
+        img = cv2.putText(
+            img, line, (x1, y_pos), font, font_scale, text_color, line_thickness
+        )
+
     # Send the image back
     return img.copy()
 
-@app.route('/stitch', methods=['GET'])
+
+@app.route("/stitch", methods=["GET"])
 def stitch():
     """
-    This is the main endpoint for the stitching command. 
+    This is the main endpoint for the stitching command.
     """
     img = stitch_image()
     img.show()
@@ -349,27 +356,28 @@ def stitch():
     # img2.show()
     return jsonify({"result": "ok"})
 
-def predict_image(filename, model): 
-    # Read the image
-    img = cv2.imread(os.path.join('uploads', filename))
-    
-    # Convert the image to a NumPy array 
-    img = np.array(img) 
-        
-    # Convert RGB to BGR format (YOLO expects BGR) 
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR) 
-        
-    # Run YOLOv8 inference 
-    results = model(img)  # This returns a list of Results objects 
 
-    result = results[0]   # Access the first Results object 
-        
-    # Extract bounding boxes and labels from the results 
-    boxes = result.boxes  # Bounding boxes 
-    names = result.names  # Class names 
+def predict_image(filename, model):
+    # Read the image
+    img = cv2.imread(os.path.join("uploads", filename))
+
+    # Convert the image to a NumPy array
+    img = np.array(img)
+
+    # Convert RGB to BGR format (YOLO expects BGR)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # Run YOLOv8 inference
+    results = model(img)  # This returns a list of Results objects
+
+    result = results[0]  # Access the first Results object
+
+    # Extract bounding boxes and labels from the results
+    boxes = result.boxes  # Bounding boxes
+    names = result.names  # Class names
 
     name_to_id = {
-        "NA": 'NA',
+        "NA": "NA",
         "Bullseye": 10,
         "1": 11,
         "2": 12,
@@ -402,100 +410,128 @@ def predict_image(filename, model):
         "Left": 39,
         "Stop": 40,
     }
-    
-    # Prepare predictions in a list of dictionaries 
-    predictions_short = [] 
-    for box in boxes: 
-        class_name = names[int(box.cls[0].item())] 
-        boxHt = box.xyxy[0][3].item() - box.xyxy[0][1].item() 
-        boxWt = box.xyxy[0][2].item() -  box.xyxy[0][0].item() 
-        boxArea = boxHt * boxWt 
-        predictions_short.append({ 
-            "x1": box.xyxy[0][0].item(), 
-            "y1": box.xyxy[0][1].item(), 
-            "x2": box.xyxy[0][2].item(), 
-            "y2": box.xyxy[0][3].item(), 
-            "confidence": box.conf[0].item(), 
-            "class_id":  name_to_id.get(class_name, 'NA'), 
-            "class_name": class_name, 
-            "box_area" : boxArea 
-        }) 
-        
-    if len(predictions_short) > 1: 
+
+    # Prepare predictions in a list of dictionaries
+    predictions_short = []
+    for box in boxes:
+        class_name = names[int(box.cls[0].item())]
+        boxHt = box.xyxy[0][3].item() - box.xyxy[0][1].item()
+        boxWt = box.xyxy[0][2].item() - box.xyxy[0][0].item()
+        boxArea = boxHt * boxWt
+        predictions_short.append(
+            {
+                "x1": box.xyxy[0][0].item(),
+                "y1": box.xyxy[0][1].item(),
+                "x2": box.xyxy[0][2].item(),
+                "y2": box.xyxy[0][3].item(),
+                "confidence": box.conf[0].item(),
+                "class_id": name_to_id.get(class_name, "NA"),
+                "class_name": class_name,
+                "box_area": boxArea,
+            }
+        )
+
+    if len(predictions_short) > 1:
         logging.debug(f"More than one prediction found: {predictions_short}")
-        
+
         # Filter out Bullseye predictions
-        non_bullseye_predictions = [pred for pred in predictions_short if pred.get('class_name') != 'Bullseye']
-        
+        non_bullseye_predictions = [
+            pred for pred in predictions_short if pred.get("class_name") != "Bullseye"
+        ]
+
         if non_bullseye_predictions:
             # Sort non-Bullseye predictions by the largest box area
-            non_bullseye_predictions.sort(key=lambda x: x.get('box_area'), reverse=True)
-            predictions = [non_bullseye_predictions[0]]  # Select the prediction with the largest area
-            logging.debug(f"Prediction with largest box area (non-Bullseye): {predictions}")
+            non_bullseye_predictions.sort(key=lambda x: x.get("box_area"), reverse=True)
+            predictions = [
+                non_bullseye_predictions[0]
+            ]  # Select the prediction with the largest area
+            logging.debug(
+                f"Prediction with largest box area (non-Bullseye): {predictions}"
+            )
         else:
             # If all predictions were Bullseye, sort Bullseye by the largest box area
-            logging.debug(f"All predictions are Bullseye, using the largest Bullseye box area")
-            predictions_short.sort(key=lambda x: x.get('box_area'), reverse=True)
+            logging.debug(
+                f"All predictions are Bullseye, using the largest Bullseye box area"
+            )
+            predictions_short.sort(key=lambda x: x.get("box_area"), reverse=True)
             predictions = [predictions_short[0]]  # Select the largest Bullseye box
             logging.debug(f"Prediction with largest Bullseye box area: {predictions}")
-    elif len(predictions_short) == 0: 
-        predictions = [] 
-        predictions.append({ 
-            "x1": 0, 
-            "y1": 0, 
-            "x2": 0, 
-            "y2": 0, 
-            "confidence": 0, 
-            "class_id":  'NA', 
-            "class_name": 'NA', 
-            "box_area" : 0 
-        }) 
-    else: 
-        predictions = [predictions_short[0]] 
-        
-    image_id = predictions[0]["class_id"] 
-        
-    # Annotate the image    
+    elif len(predictions_short) == 0:
+        predictions = []
+        predictions.append(
+            {
+                "x1": 0,
+                "y1": 0,
+                "x2": 0,
+                "y2": 0,
+                "confidence": 0,
+                "class_id": "NA",
+                "class_name": "NA",
+                "box_area": 0,
+            }
+        )
+    else:
+        predictions = [predictions_short[0]]
+
+    image_id = predictions[0]["class_id"]
+
+    # Annotate the image
     # Convert the coordinates to int
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    bbox = [int(predictions[0]['x1']), int(predictions[0]['y1']), int(predictions[0]['x2']), int(predictions[0]['y2'])]
-    conf = predictions[0]['confidence']
+    bbox = [
+        int(predictions[0]["x1"]),
+        int(predictions[0]["y1"]),
+        int(predictions[0]["x2"]),
+        int(predictions[0]["y2"]),
+    ]
+    conf = predictions[0]["confidence"]
     image_name = predictions[0]["class_name"]
-    
+
     # Draw bounding box
-    labeled_img = draw_own_bbox(img, bbox[0], bbox[1], bbox[2], bbox[3], image_id, conf, (36,255,12), (0,0,0))
-        
+    labeled_img = draw_own_bbox(
+        img,
+        bbox[0],
+        bbox[1],
+        bbox[2],
+        bbox[3],
+        image_id,
+        conf,
+        (36, 255, 12),
+        (0, 0, 0),
+    )
+
     return image_id, labeled_img.copy(), conf
+
 
 def stitch_image():
     """
     Stitches the images in the folder together in a grid layout and saves it into the predictions folder
     """
     # Initialize path to save stitched image
-    imgFolder = 'predictions'
-    stitchedPath = os.path.join(imgFolder, f'stitched-{int(time.time())}.jpeg')
+    imgFolder = "predictions"
+    stitchedPath = os.path.join(imgFolder, f"stitched-{int(time.time())}.jpeg")
 
     # Find all files that end with ".jpg"
     imgPaths = glob.glob(os.path.join(imgFolder, "*.jpg"))
-    
+
     # Open all images
     images = [Image.open(x) for x in imgPaths]
-    
+
     # Calculate the grid size
     num_images = len(images)
     grid_size = math.ceil(math.sqrt(num_images))
-    
+
     # Get the max width and height of the images
     max_width = max(img.size[0] for img in images)
     max_height = max(img.size[1] for img in images)
-    
+
     # Calculate the size of the stitched image
     stitched_width = max_width * grid_size
     stitched_height = max_height * grid_size
-    
+
     # Create a new blank image
-    stitchedImg = Image.new('RGB', (stitched_width, stitched_height), (255, 255, 255))
-    
+    stitchedImg = Image.new("RGB", (stitched_width, stitched_height), (255, 255, 255))
+
     # Paste the images into the grid
     for index, img in enumerate(images):
         row = index // grid_size
@@ -503,12 +539,12 @@ def stitch_image():
         x_offset = col * max_width
         y_offset = row * max_height
         stitchedImg.paste(img, (x_offset, y_offset))
-    
+
     # Save the stitched image
     stitchedImg.save(stitchedPath)
 
     # Move original images to "originals" subdirectory
-    original_dir = os.path.join(os.path.dirname(__file__), 'predictions', 'originals')
+    original_dir = os.path.join(os.path.dirname(__file__), "predictions", "originals")
     if not os.path.exists(original_dir):
         os.makedirs(original_dir)
     for img in imgPaths:
@@ -519,4 +555,4 @@ def stitch_image():
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0", port=5000, debug=True)
-    app.run(port=5000, debug=True)
+    app.run(port=5002, debug=True)
